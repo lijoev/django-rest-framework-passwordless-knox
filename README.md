@@ -1,6 +1,6 @@
 ![ci-image]
 
-knoxpasswordlessdrf is a quick way to integrate ‘passwordless’ auth into
+drfpasswordlessknox is a quick way to integrate ‘passwordless’ auth into
 your Django Rest Framework project using a user’s email address or
 mobile number only (herein referred to as an alias).
 
@@ -48,10 +48,10 @@ Requirements
 Install
 =======
 
-1. Install knoxpasswordlessdrf
+1. Install drfpasswordlessknox
 
    ```
-   pipenv install knoxpasswordlessdrf
+   pipenv install drfpasswordlessknox
    ```
 
 2. Add Django Rest Framework’s Token Authentication to your Django Rest
@@ -67,7 +67,7 @@ Install
      ...
      'rest_framework',
      'knox',
-     'knoxpasswordlessdrf',
+     'drfpasswordlessknox',
       ...
  ]
  REST_KNOX = {
@@ -112,7 +112,7 @@ PASSWORDLESS_AUTH = {
 ```python
  urlpatterns = [
      ..
-     path('', include('knoxpasswordlessdrf.urls')),
+     path('', include('drfpasswordlessknox.urls')),
      ..
  ]
 ```

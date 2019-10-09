@@ -14,9 +14,9 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-name = 'knoxpasswordlessdrf'
+name = 'drfpasswordlessknox'
 
-NAME = 'knoxpasswordlessdrf'
+NAME = 'drfpasswordlessknox'
 DESCRIPTION = 'Passwordless auth for Django Rest Framework Token Authentication.'
 URL = 'https://github.com/aaronn/django-rest-framework-passwordless'
 EMAIL = 'lijoev@gmail.com'

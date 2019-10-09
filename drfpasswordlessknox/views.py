@@ -15,6 +15,11 @@ from knoxpasswordlessdrf.serializers import (
     MobileVerificationSerializer,
 )
 from knoxpasswordlessdrf.services import TokenService
+from knoxpasswordlessdrf.services import TokenService
+from knox.settings import knox_settings
+from rest_framework.serializers import DateTimeField
+from django.utils import timezone
+from django.contrib.auth.signals import user_logged_in, user_logged_out
 
 logger = logging.getLogger(__name__)
 
@@ -127,18 +132,58 @@ class AbstractBaseObtainAuthToken(APIView):
     """
     serializer_class = None
 
-    def post(self, request, *args, **kwargs):
+    def get_context(self):
+        return {'request': self.request, 'format': self.format_kwarg, 'view': self}
+
+    def get_token_ttl(self):
+        return knox_settings.TOKEN_TTL
+
+    def get_token_limit_per_user(self):
+        return knox_settings.TOKEN_LIMIT_PER_USER
+
+    def get_user_serializer_class(self):
+        return knox_settings.USER_SERIALIZER
+
+    def get_expiry_datetime_format(self):
+        return knox_settings.EXPIRY_DATETIME_FORMAT
+
+    def format_expiry_datetime(self, expiry):
+        datetime_format = self.get_expiry_datetime_format()
+        return DateTimeField(format=datetime_format).to_representation(expiry)
+
+    def get_post_response_data(self, user, token, instance):
+        UserSerializer = self.get_user_serializer_class()
+
+        data = {
+            'expiry': self.format_expiry_datetime(instance.expiry),
+            'token': token
+        }
+        if UserSerializer is not None:
+            data["user"] = UserSerializer(
+                user,
+                context=self.get_context()
+            ).data
+        return data
+
+    def post(self, request, format=None):
+        token_limit_per_user = self.get_token_limit_per_user()
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid(raise_exception=True):
             user = serializer.validated_data['user']
-            token = AuthToken.objects.create(user)
-
-            if token:
-                # Return our key for consumption.
-                return Response({'token': str(token[1])}, status=status.HTTP_200_OK)
-        else:
-            logger.error("Couldn't log in unknown user. Errors on serializer: {}".format(serializer.error_messages))
-        return Response({'detail': 'Couldn\'t log you in. Try again later.'}, status=status.HTTP_400_BAD_REQUEST)
+            if token_limit_per_user is not None:
+                now = timezone.now()
+                token = user.auth_token_set.filter(expiry__gt=now)
+                if token.count() >= token_limit_per_user:
+                    return Response(
+                        {"error": "Maximum amount of tokens allowed per user exceeded."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            token_ttl = self.get_token_ttl()
+            instance, token = AuthToken.objects.create(user, token_ttl)
+            user_logged_in.send(sender=user.__class__,
+                                request=request, user=user)
+            data = self.get_post_response_data(user, token, instance)
+            return Response(data)
 
 
 class ObtainAuthTokenFromCallbackToken(AbstractBaseObtainAuthToken):
